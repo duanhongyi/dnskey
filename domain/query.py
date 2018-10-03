@@ -4,6 +4,7 @@ import socket
 from dnslib.dns import DNSRecord, DNSQuestion, QTYPE, RR
 from django.conf import settings
 from django.db.models import Q, Exists
+from django.core import signals
 
 from .models import Record, Region
 
@@ -78,7 +79,7 @@ class LocalQuery(QueryProxy):
             return regions[0]
 
 
-    def query(self, *qlist, origin=None):
+    def _query(self, *qlist, origin=None):
         region = self.query_region_name(origin)
         q = None
         for domain, qtype in q:
@@ -104,6 +105,14 @@ class LocalQuery(QueryProxy):
             ]
         )
         return dns_record
+
+    def query(self, *qlist, origin=None):
+        try:
+            signals.request_started.send(sender=__name__)
+            return self._query(*qlist, origin)
+        finally:
+            signals.request_finished.send(sender=__name__)
+
 
 
 class MixinQueryProxy(QueryProxy):

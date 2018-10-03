@@ -2,3 +2,5 @@ dnskey
 apscheduler
 djmemcache
 dnslib
+gevent
+psycogreen
