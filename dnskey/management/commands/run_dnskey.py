@@ -8,7 +8,5 @@ class Command(runserver.Command):
 
     def handle(self, *args, **options):
         server = DNSKeyServer()
-        thread = threading.Thread(target=server.serve_forever)
-        thread.daemon = True
-        thread.start()
+        server.serve()
         return runserver.Command.handle(self, *args, **options)

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
+from urllib.parse import urlparse
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -76,14 +77,26 @@ WSGI_APPLICATION = 'dnskey.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
+# database url eg: postgresql://{username}:{password}@{host}:{port}/{database}
+DATABASES = {'default': {}}
+DNSKEY_DATABASE_PRIMARY_LIST = os.environ.get("DNSKEY_DATABASE_PRIMARY_LIST")
+DNSKEY_DATABASE_REPLICA_LIST = os.environ.get("DNSKEY_DATABASE_REPLICA_LIST")
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
-}
-
+def parse_database_list(prefix, database_list_url):
+    for index, url in enumerate(database_list_url.split(",")):
+        parse_result = urlparse(url)
+        result = map(lambda x: x.split(":"), parse_result.netloc.split("@"))
+        DATABASES['%s%s' % (prefix, index)] = {
+            'ENGINE': 'django.db.backends.%s' % parse_result.scheme,
+            'NAME': parse_result.path.replace('/', ''),
+            'USER': result[0][0],
+            'PASSWORD': result[0][1],
+            'HOST': result[1][0],
+            'PORT': int(result[1][1]),                   
+        }
+parse_database_list("primary.", DNSKEY_DATABASE_PRIMARY_LIST)
+parse_database_list("replica.", DNSKEY_DATABASE_REPLICA_LIST)
+DATABASE_ROUTERS = ['dnskey.routers.PrimaryReplicaRouter', ]
 
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
@@ -134,6 +147,11 @@ CACHES = {
         }
     }
 }
+
+DNSKEY_DATABASE_WHITELIST_TIMEOUT = int(os.environ.get(
+    "DNSKEY_DATABASE_WHITELIST_TIMEOUT",
+    "9"
+))
 
 DNSKEY_REMOTE_NAMESERVERS = os.environ.get(
     "DNSKEY_NAMESERVERS",

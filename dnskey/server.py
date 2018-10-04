@@ -3,7 +3,6 @@ import socket
 from dnslib.server import DNSServer, UDPServer, TCPServer
 
 from django.conf import settings
-from django.cache import cache
 
 class UDPServerIPV6(UDPServer):
     address_family = socket.AF_INET6
@@ -71,3 +70,8 @@ class DNSKeyServer(object):
         jobs.extend(self.start_server_ipv4())
         jobs.extend(self.start_server_ipv6())
         [job.join() for job in jobs]
+
+    def serve(self):
+        thread = threading.Thread(target=self.serve_forever)
+        thread.daemon = True
+        thread.start()

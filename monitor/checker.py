@@ -6,6 +6,7 @@ from urllib.request import urlopen, Request
 from django.core.cache import cache
 from django.core import signals
 
+from dnskey import helper
 from .icmp import ping
 from .models import Monitor
 
@@ -52,27 +53,17 @@ class BaseChecker(object):
             signals.request_finished.send(sender='checker')
 
 
-class TcpChecker(object):
+class TcpChecker(BaseChecker):
 
     def check(self, monitor):
         content = json.loads(monitor.content)
         host, port, timeout = (
             content['host'], content['port'], content['timeout'])
-        try:
-            addrinfo = socket.getaddrinfo(
-                host, port, 0,0,socket.SOL_TCP)[0][-1]
-            if len(addrinfo) == 2:  # ipv4
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-            else:
-                sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM, 0) 
-            sock.settimeout(timeout)
-            return sock.connect_ex(addrinfo[0], addrinfo[1]) == 0
-        except socket.error as e:
-            logger.debug(e)
-        return False
+        return helper.check_tcp(host, port, timeout)
+        
 
 
-class HttpChecker(object):
+class HttpChecker(BaseChecker):
 
     def check(self, monitor):
         content = json.loads(monitor.content)
@@ -83,16 +74,4 @@ class HttpChecker(object):
             content["headers"],
             content["timeout"]
         )
-
-        no_check_ssl_context = ssl.create_default_context()
-        no_check_ssl_context.check_hostname=False
-        no_check_ssl_context.verify_mode=ssl.CERT_NONE
-        request = Request(url, data, headers)
-        request.get_method = lambda : method
-        try
-            response = urlopen(
-                request, timeout=timeout, context=no_check_ssl_context)
-            return 200 <= response.status < 300
-        except urllib.error.URLError as e:
-            logger.debug(e)
-        return False
+        return helper.check_http(url, method, data, headers, timeout)
