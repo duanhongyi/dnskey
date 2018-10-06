@@ -1,13 +1,15 @@
 from django.contrib import admin
 from django.contrib.auth.models import User
 from .models import Domain, Region, Record
+from .forms import DomainForm, RecordForm
 from monitor.admin import MonitorInline
 
 # Register your models here.
 
 @admin.register(Domain)
 class DomainAdmin(admin.ModelAdmin):
-    list_display = ('name', 'type', 'created_time')
+    form = DomainForm
+    list_display = ('name', 'dtype', 'created_time')
     search_fields = ('name', 'description')
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
@@ -30,9 +32,9 @@ class RegionAdmin(admin.ModelAdmin):
 
 @admin.register(Record)
 class RecordAdmin(admin.ModelAdmin):
-
+    form = RecordForm
     inlines = (MonitorInline, )
-    list_display = ('full_subdomain', 'region_name', 'type', 'content')
+    list_display = ('full_subdomain', 'region_name', 'rtype', 'content')
     search_fields = ('name', 'content', 'description')
     readonly_fields = ('full_subdomain', )
 

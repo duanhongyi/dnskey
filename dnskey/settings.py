@@ -152,6 +152,11 @@ CACHES = {
     }
 }
 
+DNSKEY_MAXIMUM_QUERY_DEPTH = int(os.environ.get(
+    "DNSKEY_MAXIMUM_QUERY_DEPTH",
+    "20"
+))
+
 DNSKEY_DATABASE_WHITELIST_TIMEOUT = int(os.environ.get(
     "DNSKEY_DATABASE_WHITELIST_TIMEOUT",
     "9"
@@ -159,7 +164,7 @@ DNSKEY_DATABASE_WHITELIST_TIMEOUT = int(os.environ.get(
 
 DNSKEY_REMOTE_NAMESERVERS = os.environ.get(
     "DNSKEY_NAMESERVERS",
-    "119.29.29.29,223.5.5.5,180.76.76.76"
+    "119.29.29.29:53,223.5.5.5:53,180.76.76.76:53"
 ).split(",")
 
 DNSKEY_REMOTE_QUERY_TIMEOUT = int(os.environ.get("DNSKEY_REMOTE_QUERY_TIMEOUT", "3"))
@@ -172,15 +177,15 @@ DNSKEY_DNS_IPV4_SERVE_HOST = os.environ.get(
 
 DNSKEY_DNS_IPV4_SERVE_PORT = int(os.environ.get(
     "DNSKEY_DNS_IPV4_SERVE_POST",
-    "1154"
+    "1153"
 ))
 
 DNSKEY_DNS_IPV6_SERVE_HOST = os.environ.get(
-    "DNSKEY_DNS_SERVE_HOST",
+    "DNSKEY_DNS_IPV6_SERVE_HOST",
     '::'
 )
 
 DNSKEY_DNS_IPV6_SERVE_PORT = int(os.environ.get(
-    "DNSKEY_DNS_SERVE_POST",
-    "1154"
+    "DNSKEY_DNS_IPV6_SERVE_POST",
+    "1153"
 ))

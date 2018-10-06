@@ -2,13 +2,13 @@ from django.db import models
 from django.contrib.auth.models import User
 
 class Domain(models.Model):
-    DOMAIN_TYPE_CHOICES = (
+    DOMAIN_DTYPE_CHOICES = (
         (1, "stub"),
         (1, "primary"),
         (1, "secondary"),
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    type = models.PositiveSmallIntegerField(choices=DOMAIN_TYPE_CHOICES)
+    dtype = models.PositiveSmallIntegerField(choices=DOMAIN_DTYPE_CHOICES)
     name = models.CharField(primary_key=True, max_length=255, db_index=True, unique=True)
     created_time=models.DateTimeField(auto_now_add=True)
     description = models.TextField(blank=True)
@@ -25,7 +25,7 @@ class Region(models.Model):
 
 
 class Record(models.Model):
-    RECORD_TYPE_CHOICES = (
+    RECORD_RTYPE_CHOICES = (
         (1, 'A'),
         (2, 'NS'),
         (5, 'CNAME'),
@@ -41,11 +41,21 @@ class Record(models.Model):
         (2, 'disable'),
     )
 
+    RECORD_RCLASS_CHOICES = (
+        (1, 'IN'), 
+        (2, 'CS'),
+        (3, 'CH'),
+        (4, 'Hesiod'),
+        (254, 'None'),
+        (255, '*'),
+    )
+
     domain = models.ForeignKey(Domain, on_delete=models.CASCADE)
     region_name = models.CharField(max_length=32, db_index=True)
     subdomain = models.CharField(max_length=255, db_index=True)
     full_subdomain = models.CharField(max_length=255, db_index=True)
-    type = models.PositiveSmallIntegerField(choices=RECORD_TYPE_CHOICES)
+    rtype = models.PositiveSmallIntegerField(choices=RECORD_RTYPE_CHOICES)
+    rclass = models.PositiveSmallIntegerField(choices=RECORD_RCLASS_CHOICES)
     content = models.TextField()
     ttl = models.SmallIntegerField()
     priority = models.SmallIntegerField()

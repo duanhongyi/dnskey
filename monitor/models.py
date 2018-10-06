@@ -5,7 +5,7 @@ from domain.models import Record
 
 
 class Monitor(models.Model):
-    MONITOR_TYPE_CHOICES = (
+    MONITOR_MTYPE_CHOICES = (
         (1, "tcp"),
         (2, "http"),
     )
@@ -15,7 +15,7 @@ class Monitor(models.Model):
     )
 
     record = models.ForeignKey(Record, on_delete=models.CASCADE)
-    type = models.PositiveSmallIntegerField(choices=MONITOR_TYPE_CHOICES)
+    mtype = models.PositiveSmallIntegerField(choices=MONITOR_MTYPE_CHOICES)
     status = models.PositiveSmallIntegerField(choices=MONITOR_STATUS_CHOICES)
     frequency = models.PositiveSmallIntegerField()
     allowable_failure_times = models.PositiveIntegerField()

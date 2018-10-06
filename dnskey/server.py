@@ -5,6 +5,8 @@ from dnslib.server import DNSServer, UDPServer, TCPServer
 
 from django.conf import settings
 
+from domain.query import LocalQueryProxy
+
 class UDPServerIPV6(UDPServer):
     address_family = socket.AF_INET6
 
@@ -15,6 +17,9 @@ class TCPServerIPV6(TCPServer):
 
 class DnskeyResolver(object):
 
+    def __init__(self):
+        self.query = LocalQueryProxy()
+
     def resolve(self, request, handler):
         """
         todo:
@@ -23,7 +28,7 @@ class DnskeyResolver(object):
             根据每次应答时间确认上游服务的优先级
             解析结果等信息充分利用memcache以及cache的ttl特性
         """
-        pass 
+        return self.query.query(request)
 
 
 class DNSKeyServer(object):
