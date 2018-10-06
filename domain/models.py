@@ -43,7 +43,8 @@ class Record(models.Model):
 
     domain = models.ForeignKey(Domain, on_delete=models.CASCADE)
     region_name = models.CharField(max_length=32, db_index=True)
-    name = models.CharField(max_length=255, db_index=True, unique=True)
+    subdomain = models.CharField(max_length=255, db_index=True)
+    full_subdomain = models.CharField(max_length=255, db_index=True)
     type = models.PositiveSmallIntegerField(choices=RECORD_TYPE_CHOICES)
     content = models.TextField()
     ttl = models.SmallIntegerField()

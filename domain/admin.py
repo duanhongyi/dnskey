@@ -8,6 +8,7 @@ from monitor.admin import MonitorInline
 @admin.register(Domain)
 class DomainAdmin(admin.ModelAdmin):
     list_display = ('name', 'type', 'created_time')
+    search_fields = ('name', 'description')
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "user" and not request.user.is_superuser:
@@ -24,12 +25,16 @@ class DomainAdmin(admin.ModelAdmin):
 @admin.register(Region)
 class RegionAdmin(admin.ModelAdmin):
     list_display = ('state', 'province', 'city', 'zone')
+    search_fields = ('state', 'province', 'city', 'zone', 'description')
 
 
 @admin.register(Record)
 class RecordAdmin(admin.ModelAdmin):
 
     inlines = (MonitorInline, )
+    list_display = ('full_subdomain', 'region_name', 'type', 'content')
+    search_fields = ('name', 'content', 'description')
+    readonly_fields = ('full_subdomain', )
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "domain" and not request.user.is_superuser:
@@ -41,3 +46,7 @@ class RecordAdmin(admin.ModelAdmin):
         if request.user.is_superuser:
             return queryset
         return queryset.filter(domain__user=request.user)
+    
+    def save_model(self, request, obj, form, change):
+        obj.full_subdomain = '%s.%s' % (obj.subdomain, obj.domain.name)
+        super().save_model(request, obj, form, change)

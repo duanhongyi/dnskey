@@ -83,7 +83,7 @@ class LocalQuery(QueryProxy):
         region = self.query_region_name(origin)
         q = None
         for domain, qtype in q:
-            sub_q = Q(name=domain, type=getattr(QTYPE, qtype), status=1)
+            sub_q = Q(full_subdomain=domain, type=getattr(QTYPE, qtype), status=1)
             if not q:
                 q = sub_q
             else:
