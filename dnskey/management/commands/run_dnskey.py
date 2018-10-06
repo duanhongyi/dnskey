@@ -6,7 +6,8 @@ from dnskey.server import DNSKeyServer
 
 class Command(runserver.Command):
 
-    def handle(self, *args, **options):
+    def get_handler(self, *args, **options):
+        handler = runserver.Command.get_handler(self, *args, **options)
         server = DNSKeyServer()
         server.serve()
-        return runserver.Command.handle(self, *args, **options)
+        return handler

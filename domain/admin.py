@@ -1,3 +1,43 @@
 from django.contrib import admin
+from django.contrib.auth.models import User
+from .models import Domain, Region, Record
+from monitor.admin import MonitorInline
 
 # Register your models here.
+
+@admin.register(Domain)
+class DomainAdmin(admin.ModelAdmin):
+    list_display = ('name', 'type', 'created_time')
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "user" and not request.user.is_superuser:
+            kwargs["queryset"] = User.objects.filter(username=request.user.username)
+        return super(DomainAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        if request.user.is_superuser:
+            return queryset
+        return queryset.filter(user=request.user)
+
+
+@admin.register(Region)
+class RegionAdmin(admin.ModelAdmin):
+    list_display = ('state', 'province', 'city', 'zone')
+
+
+@admin.register(Record)
+class RecordAdmin(admin.ModelAdmin):
+
+    inlines = (MonitorInline, )
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "domain" and not request.user.is_superuser:
+            kwargs["queryset"] = Domain.objects.filter(user=request.user)
+        return super(RecordAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        if request.user.is_superuser:
+            return queryset
+        return queryset.filter(domain__user=request.user)

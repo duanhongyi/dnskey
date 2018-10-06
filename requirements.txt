@@ -3,4 +3,5 @@ apscheduler
 djmemcache
 dnslib
 gevent
+psycopg2
 psycogreen

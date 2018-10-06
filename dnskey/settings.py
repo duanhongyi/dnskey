@@ -41,7 +41,9 @@ INSTALLED_APPS = [
 ]
 
 INSTALLED_APPS += [
-    'dnskey'
+    'dnskey',
+    'domain',
+    'monitor',
 ]
 
 MIDDLEWARE = [
@@ -78,14 +80,14 @@ WSGI_APPLICATION = 'dnskey.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
 # database url eg: postgresql://{username}:{password}@{host}:{port}/{database}
-DATABASES = {'default': {}}
+DATABASES = {}
 DNSKEY_DATABASE_PRIMARY_LIST = os.environ.get("DNSKEY_DATABASE_PRIMARY_LIST")
 DNSKEY_DATABASE_REPLICA_LIST = os.environ.get("DNSKEY_DATABASE_REPLICA_LIST")
 
 def parse_database_list(prefix, database_list_url):
     for index, url in enumerate(database_list_url.split(",")):
         parse_result = urlparse(url)
-        result = map(lambda x: x.split(":"), parse_result.netloc.split("@"))
+        result = list(map(lambda x: x.split(":"), parse_result.netloc.split("@")))
         DATABASES['%s%s' % (prefix, index)] = {
             'ENGINE': 'django.db.backends.%s' % parse_result.scheme,
             'NAME': parse_result.path.replace('/', ''),
@@ -95,8 +97,10 @@ def parse_database_list(prefix, database_list_url):
             'PORT': int(result[1][1]),                   
         }
 parse_database_list("primary.", DNSKEY_DATABASE_PRIMARY_LIST)
+DATABASES['default'] = DATABASES[list(DATABASES.keys())[0]]
+
 parse_database_list("replica.", DNSKEY_DATABASE_REPLICA_LIST)
-DATABASE_ROUTERS = ['dnskey.routers.PrimaryReplicaRouter', ]
+#DATABASE_ROUTERS = ['dnskey.routers.PrimaryReplicaRouter', ]
 
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators

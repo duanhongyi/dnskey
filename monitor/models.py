@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 from domain.models import Record
 
@@ -13,7 +14,7 @@ class Monitor(models.Model):
         (2, 'disable'),
     )
 
-    record = models.ForeignKey(Record)
+    record = models.ForeignKey(Record, on_delete=models.CASCADE)
     type = models.PositiveSmallIntegerField(choices=MONITOR_TYPE_CHOICES)
     status = models.PositiveSmallIntegerField(choices=MONITOR_STATUS_CHOICES)
     frequency = models.PositiveSmallIntegerField()
