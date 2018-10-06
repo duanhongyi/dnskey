@@ -122,7 +122,7 @@ class LocalQueryProxy(QueryProxy):
         zone_list = []
         tracking_chain.extend(questions)
         q = self._get_database_query(questions, origin)
-        records = Record.objects.filter(q)
+        records = list(Record.objects.filter(q).all())
         for record in records:
             zone_list.append("{rr} {ttl} {rclass} {rtype} {rdata}".format(
                 rr=record.full_subdomain, ttl=record.ttl, 
