@@ -1,14 +1,12 @@
 from django.contrib import admin
 from django.contrib.auth.models import User
 from .models import Domain, Region, Record
-from .forms import DomainForm, RecordForm
 from monitor.admin import MonitorInline
 
 # Register your models here.
 
 @admin.register(Domain)
 class DomainAdmin(admin.ModelAdmin):
-    form = DomainForm
     list_display = ('name', 'dtype', 'created_time')
     search_fields = ('name', 'description')
 
@@ -23,6 +21,11 @@ class DomainAdmin(admin.ModelAdmin):
             return queryset
         return queryset.filter(user=request.user)
 
+    def save_model(self, request, obj, form, change):
+        if not obj.name.endswith('.'):
+            obj.name = '%s.' % obj.name
+        super().save_model(request, obj, form, change)
+
 
 @admin.register(Region)
 class RegionAdmin(admin.ModelAdmin):
@@ -32,7 +35,6 @@ class RegionAdmin(admin.ModelAdmin):
 
 @admin.register(Record)
 class RecordAdmin(admin.ModelAdmin):
-    form = RecordForm
     inlines = (MonitorInline, )
     list_display = ('full_subdomain', 'region_name', 'rtype', 'content')
     search_fields = ('name', 'content', 'description')

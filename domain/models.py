@@ -9,7 +9,7 @@ class Domain(models.Model):
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     dtype = models.PositiveSmallIntegerField(choices=DOMAIN_DTYPE_CHOICES)
-    name = models.CharField(primary_key=True, max_length=255, db_index=True, unique=True)
+    name = models.CharField(primary_key=True, max_length=255, db_index=True, editable=False)
     created_time=models.DateTimeField(auto_now_add=True)
     description = models.TextField(blank=True)
 
