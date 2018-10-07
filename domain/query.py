@@ -1,11 +1,13 @@
 import os
 import logging
 import socket
+import random
 
 from dnslib.dns import DNSRecord, DNSQuestion, QTYPE, CLASS, RR
 from django.conf import settings
 from django.db.models import Q, Exists
 from django.core import signals
+from django.core.cache import cache
 
 from .models import Record, Region
 
@@ -72,8 +74,7 @@ class LocalQueryProxy(QueryProxy):
             start_address__gte=ip, end_address__lt=ip)
         if regions: return regions[0]
 
-    def _get_database_query(self, questions, origin=None):
-        region = self.query_region_name(origin)
+    def _get_database_query(self, questions, region):
         q = None
         for question in questions:
             sub_q = Q(full_subdomain=str(question.qname), rtype=question.qtype,
@@ -92,19 +93,19 @@ class LocalQueryProxy(QueryProxy):
             q = (q & q_region) | (~Exists(regions) & q)
         return q
 
-    def _recursive_query(self, questions, origin, tracking_chain, records):
+    def _recursive_query(self, questions, region, tracking_chain, records):
         unanswers_questions, recursive_questions = [], []
         for question in questions:
             has_reply = False
             for record in records:
-                if question.qname == record.full_subdomain \
+                if question.qname == record.rname \
                         and question.qclass == record.rclass:
                     if question.qtype == record.rtype: 
                         has_reply = True
                     elif record.rtype == QTYPE.CNAME:
                         has_reply = True
                         question = DNSQuestion(
-                            qname=record.content, qtype=question.qtype,
+                            qname=str(record.rdata), qtype=question.qtype,
                             qclass=record.rclass
                         )
                         if question in tracking_chain: continue
@@ -114,31 +115,87 @@ class LocalQueryProxy(QueryProxy):
         if len(unanswers_questions) > 0:
             request = DNSRecord()
             request.add_question(*unanswers_questions)
-            yield from self.remote.query(request).rr
-        yield from self._query(recursive_questions, origin, tracking_chain)
+            records = self.remote.query(request).rr
+            self._set_cached_records(records, region)
+            yield from records
+        yield from self._query(recursive_questions, region, tracking_chain)
 
-    def _query(self, questions, origin, tracking_chain):
+    def _get_cached_records(self, question, region):
+        question_cname_key = '{qname}:{qtype}:{qclass}:{zone}'.format(
+            qname=question.qname,
+            qtype=QTYPE.CNAME,
+            qclass=question.qclass,
+            zone=region.zone if region else None,
+        )
+        question_record_key =  '{qname}:{qtype}:{qclass}:{zone}'.format(
+            qname=question.qname,
+            qtype=question.qtype,
+            qclass=question.qclass,
+            zone=region.zone if region else None,
+        )
+        records = []
+        for values in cache.get_many(
+            [question_cname_key, question_record_key,]).values():
+            records.extend(values)
+        random.shuffle(records)
+        return records
+
+    def _set_cached_records(self, records, region):
+        results = {}
+        for record in records:
+            question_record_key =  '{qname}:{qtype}:{qclass}:{zone}'.format(
+                qname=record.rname,
+                qtype=record.rtype,
+                qclass=record.rclass,
+                zone=region.zone if region else None,
+            )
+            if question_record_key not in results:
+                results[question_record_key] = {"records": [], 'ttl': 3600}
+            results[question_record_key]["records"].append(record)
+            if results[question_record_key]["ttl"] > record.ttl:
+                results[question_record_key]["ttl"] = record.ttl    
+        for key, value in results.items():
+            cache.set(key, value["records"], value["ttl"])
+
+    def _get_records(self, questions, region):
+        uncached_questions = []
+        for question in questions:
+            records = self._get_cached_records(question, region)
+            if len(records) > 0:
+                yield from records
+            else:
+                uncached_questions.append(question) 
+        if len(uncached_questions) > 0:
+            q = self._get_database_query(uncached_questions, region)
+            zone_list = []
+            for record in Record.objects.filter(q).all():
+                zone_list.append("{rr} {ttl} {rclass} {rtype} {rdata}".format(
+                    rr=record.full_subdomain, ttl=record.ttl, 
+                    rclass=CLASS.get(record.rclass),
+                    rtype=QTYPE.get(record.rtype), rdata=record.content
+                ))
+            records = RR.fromZone(
+                os.linesep.join(zone_list),
+                origin=region.zone if region else None)
+            self._set_cached_records(records, region)
+            random.shuffle(records)
+            yield from records
+
+    def _query(self, questions, region, tracking_chain):
         if len(questions) == 0: return
         zone_list = []
         tracking_chain.extend(questions)
-        q = self._get_database_query(questions, origin)
-        records = list(Record.objects.filter(q).all())
-        for record in records:
-            zone_list.append("{rr} {ttl} {rclass} {rtype} {rdata}".format(
-                rr=record.full_subdomain, ttl=record.ttl, 
-                rclass=CLASS.get(record.rclass), rtype=QTYPE.get(record.rtype),
-                rdata=record.content
-            ))
-            yield from RR.fromZone(
-                os.linesep.join(zone_list), origin=origin, ttl=record.ttl)
-        yield from self._recursive_query(questions, origin, tracking_chain, records)
+        records = list(self._get_records(questions, region))
+        yield from records
+        yield from self._recursive_query(questions, region, tracking_chain, records)
 
     def query(self, request, origin=None):
         try:
             signals.request_started.send(sender=__name__)
             tracking_chain = []  # Prevent infinite recursion
+            region = self.query_region_name(origin)
             for index, rr in enumerate(self._query(
-                request.questions, origin, tracking_chain)):
+                request.questions, region, tracking_chain)):
                 if index > settings.DNSKEY_MAXIMUM_QUERY_DEPTH:
                     break
                 request.add_answer(rr)
