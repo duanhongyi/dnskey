@@ -1,11 +1,14 @@
 import ssl
+import logging
 import socket
 
+from urllib.request import Request, urlopen
+from urllib.error import URLError
 from contextlib import closing
 
 from django.conf import settings
-from django.db import connections
 
+logger = logging.getLogger(__name__)
 
 def check_tcp(host, port, timeout):
     try:
@@ -33,6 +36,6 @@ def check_http(url, method, data, headers, timeout):
             request, timeout=timeout, context=no_check_ssl_context
         )) as response:
             return 200 <= response.status < 300
-    except urllib.error.URLError as e:
+    except URLError as e:
         logger.debug(e)
     return False

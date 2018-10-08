@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -13,7 +14,7 @@ class Monitor(models.Model):
         (1, 'enable'),
         (2, 'disable'),
     )
-
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     record = models.ForeignKey(Record, on_delete=models.CASCADE)
     mtype = models.PositiveSmallIntegerField(choices=MONITOR_MTYPE_CHOICES)
     status = models.PositiveSmallIntegerField(choices=MONITOR_STATUS_CHOICES)

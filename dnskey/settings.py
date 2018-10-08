@@ -145,7 +145,7 @@ CACHES = {
         'BACKEND': 'djmemcache.backend.PyMemcacheCache',
         'LOCATION': os.environ.get("DNSKEY_MEMCACACHE_SERVERS"),
         'OPTIONS': {
-            'TIMEOUT': 300,
+            'TIMEOUT': 600,
             'CONNECT_TIMEOUT': 30,
             'USE_POOLING': True,
         }

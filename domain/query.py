@@ -1,15 +1,18 @@
 import os
+import hashlib
 import logging
 import socket
 import random
 
 from dnslib.dns import DNSRecord, DNSQuestion, QTYPE, CLASS, RR
+
 from django.conf import settings
 from django.db.models import Q, Exists
 from django.core import signals
 from django.core.cache import cache
 
 from .models import Record, Region
+from .signals import query_records
 
 logger = logging.getLogger(__name__)
 
@@ -74,13 +77,13 @@ class LocalQueryProxy(QueryProxy):
             start_address__gte=ip, end_address__lt=ip)
         if regions: return regions[0]
 
-    def _get_database_query(self, questions, region):
+    def _get_database_records(self, questions, region):
         q = None
         for question in questions:
             sub_q = Q(full_subdomain=str(question.qname), rtype=question.qtype,
-                status=1, rclass=question.qclass)
+                rclass=question.qclass)
             sub_q = sub_q | Q(full_subdomain=str(question.qname),
-                rtype=QTYPE.CNAME, status=1, rclass=question.qclass)
+                rtype=QTYPE.CNAME, rclass=question.qclass)
             if not q:
                 q = sub_q
             else:
@@ -91,21 +94,22 @@ class LocalQueryProxy(QueryProxy):
             ])
             regions = Record.objects.filter(q & q_region)
             q = (q & q_region) | (~Exists(regions) & q)
-        return q
+        return list(Record.objects.filter(q).all())
 
     def _recursive_query(self, questions, region, tracking_chain, records):
         unanswers_questions, recursive_questions = [], []
         for question in questions:
             has_reply = False
             for record in records:
-                if question.qname == record.rname \
+                if question.qname == record.full_subdomain \
+                        and record.status == 1 \
                         and question.qclass == record.rclass:
                     if question.qtype == record.rtype: 
                         has_reply = True
                     elif record.rtype == QTYPE.CNAME:
                         has_reply = True
                         question = DNSQuestion(
-                            qname=str(record.rdata), qtype=question.qtype,
+                            qname=record.content, qtype=question.qtype,
                             qclass=record.rclass
                         )
                         if question in tracking_chain: continue
@@ -115,7 +119,11 @@ class LocalQueryProxy(QueryProxy):
         if len(unanswers_questions) > 0:
             request = DNSRecord()
             request.add_question(*unanswers_questions)
-            records = self.remote.query(request).rr
+            records = [
+                Record(full_subdomain=r.rname, rtype=r.rtype, rclass=r.rclass,
+                    content=str(r.rdata), ttl=r.ttl, status=1) 
+                for r in self.remote.query(request).rr
+            ]
             self._set_cached_records(records, region)
             yield from records
         yield from self._query(recursive_questions, region, tracking_chain)
@@ -133,53 +141,45 @@ class LocalQueryProxy(QueryProxy):
             qclass=question.qclass,
             zone=region.zone if region else None,
         )
-        records = []
+        record_ids_key = []
         for values in cache.get_many(
             [question_cname_key, question_record_key,]).values():
-            records.extend(values)
+            record_ids_key.extend(["record:%s" % i for i in values])
+        records = list(cache.get_many(record_ids_key).values())
         random.shuffle(records)
         return records
 
     def _set_cached_records(self, records, region):
-        results = {}
+        ids_map, records_map = {}, {}
         for record in records:
             question_record_key =  '{qname}:{qtype}:{qclass}:{zone}'.format(
-                qname=record.rname,
+                qname=record.full_subdomain,
                 qtype=record.rtype,
                 qclass=record.rclass,
                 zone=region.zone if region else None,
             )
-            if question_record_key not in results:
-                results[question_record_key] = {"records": [], 'ttl': 3600}
-            results[question_record_key]["records"].append(record)
-            if results[question_record_key]["ttl"] > record.ttl:
-                results[question_record_key]["ttl"] = record.ttl    
-        for key, value in results.items():
-            cache.set(key, value["records"], value["ttl"])
+            if question_record_key not in ids_map:
+                ids_map[question_record_key] = {"record_ids": [], 'ttl': 3600}
+            ids_map[question_record_key]["record_ids"].append(record.pk)
+            if ids_map[question_record_key]["ttl"] > record.ttl:
+                ids_map[question_record_key]["ttl"] = record.ttl    
+            records_map["record:%s" % record.pk] = record
+        for key, value in ids_map.items():
+            cache.set(key, value["record_ids"], value["ttl"])
+        cache.set_many(records_map)
 
     def _get_records(self, questions, region):
         uncached_questions = []
         for question in questions:
             records = self._get_cached_records(question, region)
             if len(records) > 0:
-                yield from records
+                return records
             else:
                 uncached_questions.append(question) 
-        if len(uncached_questions) > 0:
-            q = self._get_database_query(uncached_questions, region)
-            zone_list = []
-            for record in Record.objects.filter(q).all():
-                zone_list.append("{rr} {ttl} {rclass} {rtype} {rdata}".format(
-                    rr=record.full_subdomain, ttl=record.ttl, 
-                    rclass=CLASS.get(record.rclass),
-                    rtype=QTYPE.get(record.rtype), rdata=record.content
-                ))
-            records = RR.fromZone(
-                os.linesep.join(zone_list),
-                origin=region.zone if region else None)
-            self._set_cached_records(records, region)
-            random.shuffle(records)
-            yield from records
+        records = self._get_database_records(uncached_questions, region)
+        self._set_cached_records(records, region)
+        random.shuffle(records)
+        return records
 
     def _query(self, questions, region, tracking_chain):
         if len(questions) == 0: return
@@ -187,18 +187,33 @@ class LocalQueryProxy(QueryProxy):
         tracking_chain.extend(questions)
         records = list(self._get_records(questions, region))
         yield from records
-        yield from self._recursive_query(questions, region, tracking_chain, records)
+        yield from self._recursive_query(
+            questions, region, tracking_chain, records)
 
     def query(self, request, origin=None):
         try:
             signals.request_started.send(sender=__name__)
             tracking_chain = []  # Prevent infinite recursion
             region = self.query_region_name(origin)
-            for index, rr in enumerate(self._query(
+            records, checker_records = [], []
+            for index, record in enumerate(self._query(
                 request.questions, region, tracking_chain)):
                 if index > settings.DNSKEY_MAXIMUM_QUERY_DEPTH:
                     break
-                request.add_answer(rr)
+                if record.subdomain:
+                    checker_records.append(record)
+                if record.status == 1:
+                    rr = RR.fromZone(
+                            "{rr} {ttl} {rclass} {rtype} {rdata}".format(
+                        rr=record.full_subdomain, ttl=record.ttl, 
+                        rclass=CLASS.get(record.rclass),
+                        rtype=QTYPE.get(record.rtype), rdata=record.content
+                    ))
+                    records.append(record)
+                    request.add_answer(*rr)
+            if len(checker_records) > 0:
+                query_records.send(
+                    sender=LocalQueryProxy, records=checker_records)
             return request
         finally:
             signals.request_finished.send(sender=__name__)

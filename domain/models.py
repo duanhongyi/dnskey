@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -50,6 +51,7 @@ class Record(models.Model):
         (255, '*'),
     )
 
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     domain = models.ForeignKey(Domain, on_delete=models.CASCADE)
     region_name = models.CharField(max_length=32, db_index=True)
     subdomain = models.CharField(max_length=255, db_index=True)
@@ -58,7 +60,6 @@ class Record(models.Model):
     rclass = models.PositiveSmallIntegerField(choices=RECORD_RCLASS_CHOICES)
     content = models.TextField()
     ttl = models.SmallIntegerField()
-    priority = models.SmallIntegerField()
     status = models.PositiveSmallIntegerField(choices=RECORD_STATUS_CHOICES)
     created_time=models.DateTimeField(auto_now_add=True)
     description = models.TextField(blank=True)

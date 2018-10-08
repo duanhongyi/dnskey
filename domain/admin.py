@@ -36,7 +36,7 @@ class RegionAdmin(admin.ModelAdmin):
 @admin.register(Record)
 class RecordAdmin(admin.ModelAdmin):
     inlines = (MonitorInline, )
-    list_display = ('full_subdomain', 'region_name', 'rtype', 'content')
+    list_display = ('full_subdomain', 'region_name', 'rtype', 'content', 'status')
     search_fields = ('name', 'content', 'description')
     readonly_fields = ('full_subdomain', )
 
@@ -52,5 +52,8 @@ class RecordAdmin(admin.ModelAdmin):
         return queryset.filter(domain__user=request.user)
     
     def save_model(self, request, obj, form, change):
-        obj.full_subdomain = '%s.%s' % (obj.subdomain, obj.domain.name)
+        if obj.subdomain == '@':
+            obj.full_subdomain = obj.domain.name
+        else:
+            obj.full_subdomain = '%s.%s' % (obj.subdomain, obj.domain.name)
         super().save_model(request, obj, form, change)
