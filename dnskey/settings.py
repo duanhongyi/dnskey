@@ -170,22 +170,12 @@ DNSKEY_REMOTE_NAMESERVERS = os.environ.get(
 DNSKEY_REMOTE_QUERY_TIMEOUT = int(os.environ.get("DNSKEY_REMOTE_QUERY_TIMEOUT", "3"))
 DNSKEY_REMOTE_QUERY_PROTOCOL = os.environ.get("DNSKEY_REMOTE_QUERY_PROTOCOL", "UDP")
 
-DNSKEY_DNS_IPV4_SERVE_HOST = os.environ.get(
-    "DNSKEY_DNS_IPV4_SERVE_HOST",
-    '0.0.0.0'
-)
-
-DNSKEY_DNS_IPV4_SERVE_PORT = int(os.environ.get(
-    "DNSKEY_DNS_IPV4_SERVE_POST",
-    "1153"
-))
-
-DNSKEY_DNS_IPV6_SERVE_HOST = os.environ.get(
-    "DNSKEY_DNS_IPV6_SERVE_HOST",
+DNSKEY_DNS_SERVE_HOST = os.environ.get(
+    "DNSKEY_DNS_SERVE_HOST",
     '::'
 )
 
-DNSKEY_DNS_IPV6_SERVE_PORT = int(os.environ.get(
-    "DNSKEY_DNS_IPV6_SERVE_POST",
-    "1153"
+DNSKEY_DNS_SERVE_PORT = int(os.environ.get(
+    "DNSKEY_DNS_SERVE_POST",
+    "53"
 ))

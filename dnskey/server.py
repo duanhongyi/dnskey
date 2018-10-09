@@ -7,15 +7,15 @@ from django.conf import settings
 
 from domain.query import LocalQueryProxy
 
-class UDPServerIPV6(UDPServer):
+class DNSUDPServer(UDPServer):
     address_family = socket.AF_INET6
 
 
-class TCPServerIPV6(TCPServer):
+class DNSTCPServer(TCPServer):
     address_family = socket.AF_INET6
 
 
-class DnskeyResolver(object):
+class DNSkeyResolver(object):
 
     def __init__(self):
         self.query = LocalQueryProxy()
@@ -33,48 +33,29 @@ class DnskeyResolver(object):
 
 class DNSKeyServer(object):
 
-    def start_server_ipv4(self):
-        host = settings.DNSKEY_DNS_IPV4_SERVE_HOST
-        port = settings.DNSKEY_DNS_IPV4_SERVE_PORT
-        udp_server_ipv4 = DNSServer(
-            DnskeyResolver(),
+    def start_server(self):
+        host = settings.DNSKEY_DNS_SERVE_HOST
+        port = settings.DNSKEY_DNS_SERVE_PORT
+        udp_server = DNSServer(
+            DNSkeyResolver(),
             address=host,
             port=port,
+            server=DNSUDPServer
         )
-        tcp_server_ipv4 = DNSServer(
-            DnskeyResolver(),
-            address=host,
-            port=port,
-            tcp=True,
-        )
-        udp_server_ipv4.start_thread()
-        tcp_server_ipv4.start_thread()
-        return udp_server_ipv4.thread, tcp_server_ipv4.thread
-
-    def start_server_ipv6(self):
-        host = settings.DNSKEY_DNS_IPV6_SERVE_HOST
-        port = settings.DNSKEY_DNS_IPV6_SERVE_PORT
-        udp_server_ipv6 = DNSServer(
-            DnskeyResolver(),
-            address=host,
-            port=port,
-            server=UDPServerIPV6
-        )
-        tcp_server_ipv6 = DNSServer(
-            DnskeyResolver(),
+        tcp_server = DNSServer(
+            DNSkeyResolver(),
             address=host,
             port=port,
             tcp=True,
-            server=TCPServerIPV6
+            server=DNSTCPServer
         )
-        udp_server_ipv6.start_thread()
-        tcp_server_ipv6.start_thread()
-        return udp_server_ipv6.thread, tcp_server_ipv6.thread
+        udp_server.start_thread()
+        tcp_server.start_thread()
+        return udp_server.thread, tcp_server.thread
 
     def serve_forever(self):
         jobs = []
-        jobs.extend(self.start_server_ipv4())
-        jobs.extend(self.start_server_ipv6())
+        jobs.extend(self.start_server())
         [job.join() for job in jobs]
 
     def serve(self):
