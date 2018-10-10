@@ -24,13 +24,6 @@ class DNSkeyResolver(object):
         self.query = LocalQueryProxy()
 
     def resolve(self, request, handler):
-        """
-        todo:
-            获取解析结果
-            settings.DNSKEY_NAMESERVERS为上游服务器
-            根据每次应答时间确认上游服务的优先级
-            解析结果等信息充分利用memcache以及cache的ttl特性
-        """
         return self.query.query(request)
 
 
