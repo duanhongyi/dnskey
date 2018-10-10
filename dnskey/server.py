@@ -56,8 +56,8 @@ class DNSKeyServer(object):
         workers = []
         for _ in range(self.worker_processes):
             process = Process(target=self._start_threads, args=(
-                self.tcp_server.handle_request,
-                self.udp_server.handle_request,
+                self.tcp_server.serve_forever,
+                self.udp_server.serve_forever,
             ))
             process.daemon = self.daemon
             process.start()
