@@ -2,7 +2,7 @@ import random
 from django.conf import settings
 from django.core.cache import cache
 
-from dnskey import helper
+from monitor import helper
 
 class PrimaryReplicaRouter(object):
     def __init__(self):
