@@ -6,8 +6,14 @@ from dnskey.server import DNSKeyServer
 
 class Command(runserver.Command):
 
-    def get_handler(self, *args, **options):
-        handler = runserver.Command.get_handler(self, *args, **options)
+    def _handle(self, *args, **options):
+        runserver.Command.handle(self, *args, **options)
+
+
+    def handle(self, *args, **options):
+        thread = threading.Thread(
+            target=self._handle, args=args, kwargs=options)
+        thread.start()
         server = DNSKeyServer()
         server.serve()
-        return handler
+        thread.join()
