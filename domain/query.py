@@ -8,7 +8,6 @@ from dnslib.dns import DNSRecord, DNSQuestion, QTYPE, CLASS, RR
 
 from django.conf import settings
 from django.db.models import Q, Exists
-from django.core import signals
 from django.core.cache import cache
 
 from .models import Record, Region
@@ -191,29 +190,25 @@ class LocalQueryProxy(QueryProxy):
             questions, region, tracking_chain, records)
 
     def query(self, request, origin=None):
-        try:
-            signals.request_started.send(sender=__name__)
-            tracking_chain = []  # Prevent infinite recursion
-            region = self.query_region_name(origin)
-            records, checker_records = [], []
-            for index, record in enumerate(self._query(
-                request.questions, region, tracking_chain)):
-                if index > settings.DNSKEY_MAXIMUM_QUERY_DEPTH:
-                    break
-                if record.subdomain:
-                    checker_records.append(record)
-                if record.status == 1:
-                    rr = RR.fromZone(
-                            "{rr} {ttl} {rclass} {rtype} {rdata}".format(
-                        rr=record.full_subdomain, ttl=record.ttl, 
-                        rclass=CLASS.get(record.rclass),
-                        rtype=QTYPE.get(record.rtype), rdata=record.content
-                    ))
-                    records.append(record)
-                    request.add_answer(*rr)
-            if len(checker_records) > 0:
-                query_records.send(
-                    sender=LocalQueryProxy, records=checker_records)
-            return request
-        finally:
-            signals.request_finished.send(sender=__name__)
+        tracking_chain = []  # Prevent infinite recursion
+        region = self.query_region_name(origin)
+        records, checker_records = [], []
+        for index, record in enumerate(self._query(
+            request.questions, region, tracking_chain)):
+            if index > settings.DNSKEY_MAXIMUM_QUERY_DEPTH:
+                break
+            if record.subdomain:
+                checker_records.append(record)
+            if record.status == 1:
+                rr = RR.fromZone(
+                        "{rr} {ttl} {rclass} {rtype} {rdata}".format(
+                    rr=record.full_subdomain, ttl=record.ttl, 
+                    rclass=CLASS.get(record.rclass),
+                    rtype=QTYPE.get(record.rtype), rdata=record.content
+                ))
+                records.append(record)
+                request.add_answer(*rr)
+        if len(checker_records) > 0:
+            query_records.send(
+                sender=LocalQueryProxy, records=checker_records)
+        return request

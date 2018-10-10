@@ -3,8 +3,9 @@ import threading
 
 from multiprocessing import cpu_count, Process
 from dnslib.server import UDPServer, TCPServer, DNSLogger, DNSHandler
-from django.conf import settings
 
+from django.conf import settings
+from django.core.signals import request_started, request_finished
 from domain.query import LocalQueryProxy
 
 logger = DNSLogger(log="-send,-recv,-request,-reply,-truncated,-data")
@@ -23,7 +24,11 @@ class DNSkeyResolver(object):
         self.query = LocalQueryProxy()
 
     def resolve(self, request, handler):
-        return self.query.query(request)
+        try:
+            request_started.send(sender=__name__)
+            return self.query.query(request)
+        finally:
+            request_finished.send(sender=__name__)
 
 
 class DNSKeyServer(object):
