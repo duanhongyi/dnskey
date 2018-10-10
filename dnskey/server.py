@@ -1,11 +1,14 @@
 import socket
 import threading
 
-from dnslib.server import DNSServer, UDPServer, TCPServer
-
+from dnslib.server import DNSServer, UDPServer, TCPServer, DNSLogger
 from django.conf import settings
 
 from domain.query import LocalQueryProxy
+
+
+logger = DNSLogger(log="-send,-recv,-request,-reply,-truncated,-data")
+
 
 class DNSUDPServer(UDPServer):
     address_family = socket.AF_INET6
@@ -34,21 +37,14 @@ class DNSkeyResolver(object):
 class DNSKeyServer(object):
 
     def start_server(self):
-        host = settings.DNSKEY_DNS_SERVE_HOST
-        port = settings.DNSKEY_DNS_SERVE_PORT
-        udp_server = DNSServer(
-            DNSkeyResolver(),
-            address=host,
-            port=port,
-            server=DNSUDPServer
-        )
-        tcp_server = DNSServer(
-            DNSkeyResolver(),
-            address=host,
-            port=port,
-            tcp=True,
-            server=DNSTCPServer
-        )
+        server_kwargs = {
+            "address": settings.DNSKEY_DNS_SERVE_HOST,
+            "port": settings.DNSKEY_DNS_SERVE_PORT,
+            "resolver": DNSkeyResolver(),
+            "logger": logger,
+        }
+        udp_server = DNSServer(server=DNSUDPServer, **server_kwargs)
+        tcp_server = DNSServer(tcp=True, server=DNSTCPServer, **server_kwargs)
         udp_server.start_thread()
         tcp_server.start_thread()
         return udp_server.thread, tcp_server.thread
