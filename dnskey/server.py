@@ -1,11 +1,11 @@
 import socket
 import threading
 
-from dnslib.server import DNSServer, UDPServer, TCPServer, DNSLogger
+from multiprocessing import cpu_count, Process
+from dnslib.server import UDPServer, TCPServer, DNSLogger, DNSHandler
 from django.conf import settings
 
 from domain.query import LocalQueryProxy
-
 
 logger = DNSLogger(log="-send,-recv,-request,-reply,-truncated,-data")
 
@@ -19,7 +19,6 @@ class DNSTCPServer(TCPServer):
 
 
 class DNSkeyResolver(object):
-
     def __init__(self):
         self.query = LocalQueryProxy()
 
@@ -28,26 +27,39 @@ class DNSkeyResolver(object):
 
 
 class DNSKeyServer(object):
+    
+    daemon = True
+    worker_processes = cpu_count() * 2
 
-    def start_server(self):
-        server_kwargs = {
-            "address": settings.DNSKEY_DNS_SERVE_HOST,
-            "port": settings.DNSKEY_DNS_SERVE_PORT,
-            "resolver": DNSkeyResolver(),
-            "logger": logger,
-        }
-        udp_server = DNSServer(server=DNSUDPServer, **server_kwargs)
-        tcp_server = DNSServer(tcp=True, server=DNSTCPServer, **server_kwargs)
-        udp_server.start_thread()
-        tcp_server.start_thread()
-        return udp_server.thread, tcp_server.thread
+    def __init__(self):
+        address = settings.DNSKEY_DNS_SERVE_HOST
+        port = settings.DNSKEY_DNS_SERVE_PORT
+        resolver = DNSkeyResolver()
+        logger = DNSLogger(log="-send,-recv,-request,-reply,-truncated,-data")
+        self.tcp_server = DNSTCPServer((address, port), DNSHandler)
+        self.tcp_server.resolver = resolver
+        self.tcp_server.logger = logger
+        self.udp_server = DNSUDPServer((address, port), DNSHandler)
+        self.udp_server.resolver = resolver
+        self.udp_server.logger = logger
 
-    def serve_forever(self):
-        jobs = []
-        jobs.extend(self.start_server())
-        [job.join() for job in jobs]
+    def _start_threads(self, *targets):
+        threads = []
+        for target in targets:
+            thread = threading.Thread(target=target)
+            thread.daemon = True
+            thread.start()
+            threads.append(thread)
+        [thread.join() for thread in threads]
 
     def serve(self):
-        thread = threading.Thread(target=self.serve_forever)
-        thread.daemon = True
-        thread.start()
+        workers = []
+        for _ in range(self.worker_processes):
+            process = Process(target=self._start_threads, args=(
+                self.tcp_server.handle_request,
+                self.udp_server.handle_request,
+            ))
+            process.daemon = self.daemon
+            process.start()
+            workers.append(process)
+        return workers

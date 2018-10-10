@@ -5,7 +5,6 @@ psycogreen.gevent.patch_psycopg()
 
 import sys
 import getopt
-import socket
 from gevent.pywsgi import WSGIServer
 
 from dnskey.wsgi import application
