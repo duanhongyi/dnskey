@@ -1,6 +1,7 @@
 import logging
 import threading
 
+from django.core.signals import request_started, request_finished
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.core.cache import cache
@@ -29,17 +30,21 @@ def monitor_post_save_handler(instance, **kwargs):
 @receiver(query_records, sender=LocalQueryProxy)
 def query_records_handler(records, **kwargs):
     def check_records(records):
-        for monitor in _get_monitors(records):
-            for record in records:
-                if monitor.record_id == record.pk:
-                    if monitor.mtype == 1:  # tcp
-                        checker = TcpChecker(record, monitor)
-                    elif monitor.mtype == 2:
-                        checker = HttpChecker(record, monitor)
-                    thread = threading.Thread(target=checker)
-                    thread.daemon = True
-                    thread.start() 
-                    break
+        try:
+            request_started.send(sender=__name__)
+            for monitor in _get_monitors(records):
+                for record in records:
+                    if monitor.record_id == record.pk:
+                        if monitor.mtype == 1:  # tcp
+                            checker = TcpChecker(record, monitor)
+                        elif monitor.mtype == 2:
+                            checker = HttpChecker(record, monitor)
+                        thread = threading.Thread(target=checker)
+                        thread.daemon = True
+                        thread.start() 
+                        break
+        finally:
+            request_finished.send(sender=__name__)
 
     thread = threading.Thread(target=check_records, args=(records, ))
     thread.daemon = True
