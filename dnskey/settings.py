@@ -100,7 +100,7 @@ parse_database_list("primary.", DNSKEY_DATABASE_PRIMARY_LIST)
 DATABASES['default'] = DATABASES[list(DATABASES.keys())[0]]
 
 parse_database_list("replica.", DNSKEY_DATABASE_REPLICA_LIST)
-#DATABASE_ROUTERS = ['dnskey.routers.PrimaryReplicaRouter', ]
+DATABASE_ROUTERS = ['dnskey.routers.PrimaryReplicaRouter', ]
 
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
