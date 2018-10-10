@@ -26,7 +26,7 @@ class DNSkeyResolver(object):
     def resolve(self, request, handler):
         try:
             request_started.send(sender=__name__)
-            return self.query.query(request)
+            return self.query.query(request, self.request.getsockname()[0])
         finally:
             request_finished.send(sender=__name__)
 
