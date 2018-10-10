@@ -63,18 +63,24 @@ class LocalQueryProxy(QueryProxy):
     def __init__(self):
         self.remote = RemoteQueryProxy()
 
-    def query_region_name(self, origin):
+    def _get_or_set_cached_region(self, origin):
+        def get_region():
+            addrinfo = socket.getaddrinfo(origin, 0)
+            if len(addrinfo[0][-1]) == 2:  # ipv4
+                address_family = socket.AF_INET
+            else:
+                address_family = socket.AF_INET6
+            ip = int.from_bytes(
+                socket.inet_pton(address_family, origin), 'big')
+            regions = Region.objects.filter(
+                start_address__gte=ip, end_address__lt=ip)
+            if regions:
+                return regions[0]
+            return Region()
+
         if not origin: return
-        addrinfo = socket.getaddrinfo(origin, 0)    
-        if len(addrinfo[0][-1]) == 2:  # ipv4
-            address_family = socket.AF_INET
-        else:
-            address_family = socket.AF_INET6
-        ip = int.from_bytes(
-            socket.inet_pton(address_family, origin), 'big')
-        regions = Region.objects.filter(
-            start_address__gte=ip, end_address__lt=ip)
-        if regions: return regions[0]
+        region = cache.get_or_set("region_by_ip:%s" % origin, get_region)
+        return region if region.pk else None
 
     def _get_database_records(self, questions, region):
         q = None
@@ -191,7 +197,7 @@ class LocalQueryProxy(QueryProxy):
 
     def query(self, request, origin=None):
         tracking_chain = []  # Prevent infinite recursion
-        region = self.query_region_name(origin)
+        region = self._get_or_set_cached_region(origin)
         records, checker_records = [], []
         for index, record in enumerate(self._query(
             request.questions, region, tracking_chain)):
