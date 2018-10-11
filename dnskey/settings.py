@@ -24,7 +24,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = '2xwp7g3cj^i=ro$_^ei=vn7bgn^yesux(wp(pf^$$a52dz3g4q'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = bool(int(os.environ.get('DNSKEY_DEBUG' , 1)))
 
 ALLOWED_HOSTS = os.environ.get("DNSKEY_HTTP_ALLOWED_HOSTS", "*").split(",")
 
