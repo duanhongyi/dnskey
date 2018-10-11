@@ -8,9 +8,10 @@ class Domain(models.Model):
         (1, "primary"),
         (1, "secondary"),
     )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     dtype = models.PositiveSmallIntegerField(choices=DOMAIN_DTYPE_CHOICES)
-    name = models.CharField(primary_key=True, max_length=255, db_index=True, editable=False)
+    name = models.CharField(unique=True, max_length=255, db_index=True)
     created_time=models.DateTimeField(auto_now_add=True)
     description = models.TextField(blank=True)
 
