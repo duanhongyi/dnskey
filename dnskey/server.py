@@ -37,7 +37,10 @@ class DNSKeyServer(object):
     daemon = True
     worker_processes = cpu_count() * 2
 
-    def __init__(self):
+    def __init__(self, servers=None):
+        self.servers = servers or self._get_default_servers()
+
+    def _get_default_servers(self):
         address = settings.DNSKEY_DNS_SERVE_HOST
         port = settings.DNSKEY_DNS_SERVE_PORT
         resolver = DNSkeyResolver()
@@ -48,11 +51,15 @@ class DNSKeyServer(object):
         self.udp_server = DNSUDPServer((address, port), DNSHandler)
         self.udp_server.resolver = resolver
         self.udp_server.logger = logger
+        return [self.tcp_server, self.udp_server]
 
-    def _start_threads(self, *targets):
+    def add_server(self, *servers):
+        self.servers.extend(servers)
+
+    def serve_forever(self):
         threads = []
-        for target in targets:
-            thread = threading.Thread(target=target)
+        for server in self.servers:
+            thread = threading.Thread(target=server.serve_forever)
             thread.daemon = True
             thread.start()
             threads.append(thread)
@@ -61,10 +68,7 @@ class DNSKeyServer(object):
     def serve(self):
         workers = []
         for _ in range(self.worker_processes):
-            process = Process(target=self._start_threads, args=(
-                self.tcp_server.serve_forever,
-                self.udp_server.serve_forever,
-            ))
+            process = Process(target=self.serve_forever)
             process.daemon = self.daemon
             process.start()
             workers.append(process)

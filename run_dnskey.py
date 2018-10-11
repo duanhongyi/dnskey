@@ -7,12 +7,19 @@ import sys
 import getopt
 import threading
 
-from gevent.pywsgi import WSGIServer
+from gevent.pywsgi import WSGIServer as BaseWSGIServer
 
 from dnskey.wsgi import application
 from dnskey.server import DNSKeyServer
 
-def run_http_server():
+class WSGIServer(BaseWSGIServer):
+
+    def serve_forever(self):
+        self.start_accepting()
+        self._stop_event.wait()
+
+
+def get_http_server():
     addr, port = '::', 8080
     opts, _ = getopt.getopt(sys.argv[1:], "b:")
     for opt, value in opts:
@@ -21,18 +28,11 @@ def run_http_server():
     server = WSGIServer((addr, int(port)), application)
     server.backlog = 256
     server.max_accept = 30000
-    server.serve_forever()
-
-
-def run_dns_server():
-    dns_server = DNSKeyServer()
-    dns_server.serve()
+    server.start()
+    return server
 
 
 if __name__ == '__main__':
-    thread = threading.Thread(target=run_http_server)
-    thread.daemon = True
-    thread.start()
-
-    run_dns_server()
-    thread.join()
+    server = DNSKeyServer()
+    server.add_server(get_http_server())
+    [worker.join() for worker in server.serve()]

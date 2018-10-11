@@ -1,4 +1,5 @@
 import threading
+import multiprocessing
 from django.contrib.staticfiles.management.commands import runserver
 
 from dnskey.server import DNSKeyServer
@@ -6,14 +7,14 @@ from dnskey.server import DNSKeyServer
 
 class Command(runserver.Command):
 
-    def _handle(self, *args, **options):
-        runserver.Command.handle(self, *args, **options)
+    started_dnskey_server = False
 
-
-    def handle(self, *args, **options):
-        thread = threading.Thread(
-            target=self._handle, args=args, kwargs=options)
-        thread.start()
-        server = DNSKeyServer()
-        server.serve()
-        thread.join()
+    def get_handler(self, *args, **options):
+        if not self.started_dnskey_server:
+            server = DNSKeyServer()
+            thread = threading.Thread(target=server.serve_forever)
+            thread.daemon = True
+            thread.start()
+            started_dnskey_server = True
+            self.started_dnskey_server = True
+        return runserver.Command.get_handler(self, *args, **options)
