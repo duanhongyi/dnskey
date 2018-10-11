@@ -5,4 +5,4 @@ from .models import Monitor
 
 class MonitorInline(admin.StackedInline):
     model = Monitor
-    extra = 1
+    extra = 0

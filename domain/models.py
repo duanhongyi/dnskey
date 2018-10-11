@@ -10,11 +10,14 @@ class Domain(models.Model):
     )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    operators = models.ManyToManyField(User, related_name="domain_operators")
     dtype = models.PositiveSmallIntegerField(choices=DOMAIN_DTYPE_CHOICES)
     name = models.CharField(unique=True, max_length=255, db_index=True)
     created_time=models.DateTimeField(auto_now_add=True)
     description = models.TextField(blank=True)
 
+    def __str__(self):
+        return self.name
 
 class Region(models.Model):
     state = models.CharField(max_length=128)
