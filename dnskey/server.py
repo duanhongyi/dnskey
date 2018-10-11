@@ -34,24 +34,24 @@ class DNSkeyResolver(object):
 
 class DNSKeyServer(object):
     
-    daemon = True
-    worker_processes = cpu_count() * 2
-
     def __init__(self, servers=None):
         self.servers = servers or self._get_default_servers()
+        self.daemon = True
+        self.worker_processes = settings.DNSKEY_SERVER_WORKER_PROCESSES
+        self.worker_processes = self.worker_processes or cpu_count() * 2
 
     def _get_default_servers(self):
         address = settings.DNSKEY_DNS_SERVE_HOST
         port = settings.DNSKEY_DNS_SERVE_PORT
         resolver = DNSkeyResolver()
         logger = DNSLogger(log="-send,-recv,-request,-reply,-truncated,-data")
-        self.tcp_server = DNSTCPServer((address, port), DNSHandler)
-        self.tcp_server.resolver = resolver
-        self.tcp_server.logger = logger
-        self.udp_server = DNSUDPServer((address, port), DNSHandler)
-        self.udp_server.resolver = resolver
-        self.udp_server.logger = logger
-        return [self.tcp_server, self.udp_server]
+        servers = []
+        for server_cls in [DNSTCPServer, DNSUDPServer]:
+            server = server_cls((address, port), DNSHandler)
+            server.resolver = resolver
+            server.logger = logger
+            servers.append(server)
+        return servers
 
     def add_server(self, *servers):
         self.servers.extend(servers)

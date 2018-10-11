@@ -172,10 +172,15 @@ DNSKEY_REMOTE_QUERY_PROTOCOL = os.environ.get("DNSKEY_REMOTE_QUERY_PROTOCOL", "U
 
 DNSKEY_DNS_SERVE_HOST = os.environ.get(
     "DNSKEY_DNS_SERVE_HOST",
-    '::'
+    "::"
 )
 
 DNSKEY_DNS_SERVE_PORT = int(os.environ.get(
     "DNSKEY_DNS_SERVE_POST",
     "53"
+))
+
+DNSKEY_SERVER_WORKER_PROCESSES = int(os.environ.get(
+    "DNSKEY_SERVER_WORKER_PROCESSES",
+    "0"
 ))
