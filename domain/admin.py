@@ -10,7 +10,6 @@ from monitor.admin import MonitorInline
 class DomainAdmin(admin.ModelAdmin):
     list_display = ('name', 'dtype', 'created_time')
     search_fields = ('name', 'description')
-    readonly_fields = []
 
     def get_autocomplete_fields(self, request):
         if request.user.is_superuser:
@@ -52,10 +51,14 @@ class RegionAdmin(admin.ModelAdmin):
 class RecordAdmin(admin.ModelAdmin):
     inlines = (MonitorInline, )
     list_display = (
-        'full_subdomain', 'region_name', 'rtype', 'content', 'status')
+        'full_subdomain', 'region_name', 'rtype', 'content', 'status', 
+        'recent_query_times'
+    )
     search_fields = ('name', 'content', 'description')
-    readonly_fields = ('full_subdomain', )
+    readonly_fields = ('full_subdomain', 'recent_query_times')
     autocomplete_fields = ('domain', )
+
+    recent_query_times.short_description = "12121"
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "domain" and not request.user.is_superuser:
@@ -63,6 +66,11 @@ class RecordAdmin(admin.ModelAdmin):
             kwargs["queryset"] = Domain.objects.filter(q)
         return super(RecordAdmin, self).formfield_for_foreignkey(
             db_field, request, **kwargs)
+        
+    def get_exclude(self, request, obj):
+        if obj == None:
+            return ('full_subdomain', 'recent_query_times')
+        return ()  
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)

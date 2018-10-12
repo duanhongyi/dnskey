@@ -1,6 +1,9 @@
 import uuid
 from django.db import models
+from django.conf import settings
+from django.core.cache import cache
 from django.contrib.auth.models import User
+
 
 class Domain(models.Model):
     DOMAIN_DTYPE_CHOICES = (
@@ -67,3 +70,18 @@ class Record(models.Model):
     status = models.PositiveSmallIntegerField(choices=RECORD_STATUS_CHOICES)
     created_time=models.DateTimeField(auto_now_add=True)
     description = models.TextField(blank=True)
+
+    @property
+    def recent_query_times(self):
+        return cache.get("domain_recent_query_times:%s" % self.pk, 0)
+    
+    def incr_recent_query_times(self, delta=1):
+        try:
+            return cache.incr("domain_recent_query_times:%s" % self.pk, delta)
+        except ValueError:
+            return cache.set(
+                "domain_recent_query_times:%s" % self.pk,
+                1,
+                settings.DNSKEY_RECORD_RECENT_QUERY_TIMES_TIMEOUT
+            )
+

@@ -32,17 +32,19 @@ def query_records_handler(records, **kwargs):
     def check_records(records):
         try:
             request_started.send(sender=__name__)
+            records_map = {}
+            for record in records:
+                records_map[record.pk] = record
+                record.incr_recent_query_times(1)
             for monitor in _get_monitors(records):
-                for record in records:
-                    if monitor.record_id == record.pk:
-                        if monitor.mtype == 1:  # tcp
-                            checker = TcpChecker(record, monitor)
-                        elif monitor.mtype == 2:
-                            checker = HttpChecker(record, monitor)
-                        thread = threading.Thread(target=checker)
-                        thread.daemon = True
-                        thread.start() 
-                        break
+                record = records_map[monitor.record_id]
+                if monitor.mtype == 1:  # tcp
+                    checker = TcpChecker(record, monitor)
+                elif monitor.mtype == 2:
+                    checker = HttpChecker(record, monitor)
+                thread = threading.Thread(target=checker)
+                thread.daemon = True
+                thread.start() 
         finally:
             request_finished.send(sender=__name__)
 
