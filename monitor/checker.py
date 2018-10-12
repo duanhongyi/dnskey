@@ -78,7 +78,7 @@ class BaseChecker(object):
         ])
         message = os.linesep.join([record_message, message or ""])
         md5 = hashlib.md5()
-        md5.update(message)
+        md5.update(subject + message)
         mail_id = md5.hexdigest()
         mail_interval = cache.get_or_set("mail_interval:%s" % mail_id,
                 time.time(), settings.DNSKEY_EMAIL_INTERVAL)
