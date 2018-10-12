@@ -35,11 +35,17 @@ class DomainAdmin(admin.ModelAdmin):
             obj.user = request.user
         super().save_model(request, obj, form, change)
 
+    class Meta:
+        ordering = ['-id']
+
 
 @admin.register(Region)
 class RegionAdmin(admin.ModelAdmin):
     list_display = ('state', 'province', 'city', 'zone')
     search_fields = ('state', 'province', 'city', 'zone', 'description')
+
+    class Meta:
+        ordering = ['-id']
 
 
 @admin.register(Record)
@@ -72,3 +78,6 @@ class RecordAdmin(admin.ModelAdmin):
         else:
             obj.full_subdomain = '%s.%s' % (obj.subdomain, obj.domain.name)
         super().save_model(request, obj, form, change)
+
+    class Meta:
+        ordering = ['-id']

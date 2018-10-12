@@ -1,5 +1,4 @@
 FROM uucin/python:3.7-alpine
-MAINTAINER  duanhongyi <duanhongyi@zhumengyuan.com>
  
 ADD . /app
 WORKDIR /app
