@@ -14,9 +14,9 @@ from .checker import TcpChecker, HttpChecker
 
 monitor_key_ids_template = "monitor_ids_by_record_id:%s"
 
-@receiver(post_save, sender=Monitor)
+@receiver(post_save, sender=Record)
 def monitor_post_save_handler(instance, **kwargs):
-    record_id = instance.record_id
+    record_id = instance.pk
     monitors_map = {}
     for monitor in Monitor.objects.filter(record_id=record_id).all():
         monitors_map["monitor:%s" % monitor.pk] = monitor

@@ -47,7 +47,7 @@ class RemoteQueryProxy(QueryProxy):
                 )
             return DNSRecord.parse(a_pkt)
         except socket.timeout as e:
-            logger.exception(e)
+            logger.debug(e)
             self.nameservers.append(self.nameservers.pop(0))
 
     def query(self, request, origin=None):

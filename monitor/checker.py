@@ -8,6 +8,7 @@ import hashlib
 
 from urllib.request import urlopen, Request
 from dnslib.dns import QTYPE, CLASS
+from django.conf import settings
 from django.core.cache import cache
 from django.core import signals
 from django.core.mail import send_mail
@@ -65,28 +66,28 @@ class BaseChecker(object):
         return False
     
     def send_mail(self, subject, message=None):
-        record_message = os.linesep.join([
-            "%s: %s" % (key, value)
+        record_message = os.linesep.join(["%s: %s" % (key, value)
             for key, value in { \
                 "id": self.record.pk,
                 "region": self.record.region_name,
                 "subdomain": self.record.full_subdomain,
                 "rtype": QTYPE.get(self.record.rtype),
                 "rclass": CLASS.get(self.record.rclass),
-                "rdata": self.record.content,
+                "rdata": self.record.content
             }.items()
         ])
         message = os.linesep.join([record_message, message or ""])
         md5 = hashlib.md5()
-        md5.update(subject + message)
+        md5.update((subject + message).encode('utf8'))
         mail_id = md5.hexdigest()
         mail_interval = cache.get_or_set("mail_interval:%s" % mail_id,
-                time.time(), settings.DNSKEY_EMAIL_INTERVAL)
-        if (time.time() - mail_interval) > settings.DNSKEY_EMAIL_INTERVAL:
-            recipient_list = [user.email for user in \
-                    self.record.domain.operators.all() if user.email]
-            send_mail(subject, message, from_email=None,
-                recipient_list=recipient_list, fail_silently=False)
+                time.time(), settings.EMAIL_INTERVAL)
+        if (time.time() - mail_interval) < settings.EMAIL_INTERVAL: return
+        recipient_list = [user.email for user in \
+                self.record.domain.operators.all() if user.email]
+        send_mail("%s%s" % (settings.EMAIL_SUBJECT_PREFIX, subject), message,
+            from_email=None, recipient_list=recipient_list,
+            fail_silently=True)
 
     def __call__(self):
         try:
