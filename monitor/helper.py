@@ -3,7 +3,7 @@ import logging
 import socket
 
 from urllib.request import Request, urlopen
-from urllib.error import URLError
+from urllib.error import URLError, HTTPError
 from contextlib import closing
 
 from django.conf import settings
@@ -20,10 +20,10 @@ def check_tcp(host, port, timeout):
             sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM, 0) 
         sock.settimeout(timeout)
         with closing(sock):
-           return sock.connect_ex((addrinfo[0], addrinfo[1])) == 0
-    except socket.error as e:
-        logger.debug(e)
-    return False
+           status = sock.connect((addrinfo[0], addrinfo[1]))
+           return True, str(status)
+    except (socket.timeout, socket.gaierror) as e:
+        return False, str(e)
 
 def check_http(url, method, data, headers, timeout):
     no_check_ssl_context = ssl.create_default_context()
@@ -35,7 +35,8 @@ def check_http(url, method, data, headers, timeout):
         with closing(urlopen(
             request, timeout=timeout, context=no_check_ssl_context
         )) as response:
-            return 200 <= response.status < 300
+            return 200 <= response.status < 300, str(response.status)
     except URLError as e:
-        logger.debug(e)
-    return False
+        return False, str(e)
+    except HTTPError as e:
+        return False, str(e.status)

@@ -189,3 +189,15 @@ DNSKEY_RECORD_RECENT_QUERY_TIMES_TIMEOUT  = int(os.environ.get(
     "DNSKEY_RECORD_RECENT_QUERY_TIMES_TIMEOUT",
     "900"
 ))
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_USE_TLS = bool(int(os.environ.get('DNSKEY_EMAIL_USE_TLS', 0)))
+EMAIL_USE_SSL = bool(int(os.environ.get('DNSKEY_EMAIL_USE_SSL', 0)))
+EMAIL_HOST = os.environ.get('DNSKEY_EMAIL_HOST')
+EMAIL_PORT = int(os.environ.get('DNSKEY_EMAIL_PORT', 25))
+EMAIL_TIMEOUT = int(os.environ.get('DNSKEY_EMAIL_TIMEOUT', 9))
+EMAIL_HOST_USER = os.environ.get('DNSKEY_EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('DNSKEY_EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = os.environ.get('DNSKEY_DEFAULT_FROM_EMAIL')
+EMAIL_SUBJECT_PREFIX = os.environ.get('DNSKEY_EMAIL_SUBJECT_PREFIX')
+EMAIL_INTERVAL = int(os.environ.get('DNSKEY_EMAIL_INTERVAL', 300))

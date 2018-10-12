@@ -20,6 +20,7 @@ class Monitor(models.Model):
     status = models.PositiveSmallIntegerField(choices=MONITOR_STATUS_CHOICES)
     frequency = models.PositiveSmallIntegerField()
     allowable_failure_times = models.PositiveIntegerField()
+    recent_query_times_threshold = models.PositiveIntegerField()
     content = models.TextField()
     created_time=models.DateTimeField(auto_now_add=True)
     description = models.TextField(blank=True)

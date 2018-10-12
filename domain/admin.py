@@ -54,11 +54,9 @@ class RecordAdmin(admin.ModelAdmin):
         'full_subdomain', 'region_name', 'rtype', 'content', 'status', 
         'recent_query_times'
     )
-    search_fields = ('name', 'content', 'description')
+    search_fields = ('pk', 'name', 'content', 'description')
     readonly_fields = ('full_subdomain', 'recent_query_times')
     autocomplete_fields = ('domain', )
-
-    recent_query_times.short_description = "12121"
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "domain" and not request.user.is_superuser:
